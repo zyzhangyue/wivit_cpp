@@ -32,17 +32,29 @@ bool CSIReader::init_shm_get()
         return false;
     }
 
+sem_retry:
     // referencing to an existing semaphore set
     if ((semid = semget(key_sem, 0, SHM_MODE)) < 0) {
-        fprintf(stderr, "Error getting shared memory segments: %s\n", strerror(errno));
+        fprintf(stderr, "Error referencing to the semaphore set: %s\n", strerror(errno));
+        if (errno == ENOENT || errno == EINTR) {
+            sleep(3);
+            goto sem_retry;
+        }
+        return false;
+    }
+    fprintf(stderr, "XSI semaphore set referenced\n");
+
+shm_retry:
+    // referencing to an existing shared memory segment
+    if ((shmid = shmget(key_csi, 0, SHM_MODE)) < 0) {
+        fprintf(stderr, "Error referencing to the shared memory: %s\n", strerror(errno));
+        if (errno == ENOENT || errno == EINTR) {
+            sleep(3);
+            goto shm_retry;
+        }
         return false;
     }
 
-    // referencing to an existing shared memory segment
-    if ((shmid = shmget(key_csi, 0, SHM_MODE)) < 0) {
-        fprintf(stderr, "Error allocating shared memory segments: %s\n", strerror(errno));
-        return false;
-    }
     csi_array = (csi_packet*)shmat(shmid, nullptr, 0);
     if (csi_array == (void*)-1) {
         fprintf(stderr, "Error attaching to shared meory segments: %s\n", strerror(errno));
@@ -55,6 +67,7 @@ bool CSIReader::init_shm_get()
         return false;
     }
     slots = ds.shm_segsz / sizeof(csi_packet);
+    fprintf(stderr, "XSI shared memory referenced\n");
     return true;
 }
 
