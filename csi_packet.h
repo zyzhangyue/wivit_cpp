@@ -12,9 +12,14 @@ struct csi_packet {
     uint8_t agc;
     uint8_t perm[3];
     uint16_t bfee_count, rate;
-    uint32_t timestamp_low;
-    double csiI[30][3];
-    double csiR[30][3];
+    double timestamp_low;
+    double csiI[3][30];
+    double csiR[3][30];
+};
+
+struct csi_list_node {
+    csi_list_node *next;
+    csi_packet csi;
 };
 
 #endif

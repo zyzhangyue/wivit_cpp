@@ -61,13 +61,14 @@ shm_retry:
         return false;
     }
 
+    // determine the slots size
     struct shmid_ds ds;
     if (shmctl(shmid, IPC_STAT, &ds) < 0) {
         fprintf(stderr, "Error retrieving shared memory struct: %s\n", strerror(errno));
         return false;
     }
     slots = ds.shm_segsz / sizeof(csi_packet);
-    fprintf(stderr, "XSI shared memory referenced\n");
+    fprintf(stderr, "XSI shared memory referenced, slots: %d\n", slots);
     return true;
 }
 
@@ -84,7 +85,7 @@ bool CSIReader::get_single_csi(csi_packet *packet)
         return false;
     }
 
-    // write csi to local buffer
+    // write csi_packet to local buffer
     memcpy(packet, csi_array+index, sizeof(csi_packet));
 
     // decrement it by 1 again, let the semaphore to become 0

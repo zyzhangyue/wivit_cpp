@@ -1,31 +1,36 @@
+#include <stdlib.h>
 #include <signal.h>
+#include <stdio.h>
 #include "csi_packet.h"
-#include "csireader.h"
+#include "csiwindow.h"
+#include "module_modify_csi_power.h"
+#include "module_doppler_smooth_csi_mulpal.h"
 
-static CSIReader *reader;
-
-void sigint_handler(int signo)
+void signal_handler(int signo)
 {
-    if (reader != nullptr) {
-        reader->~CSIReader();
-    }
-    exit(-signo);
+    csi_window_exit();
+    _exit(-signo);
 }
 
 int main()
 {
-    csi_packet packet;
-    reader = new CSIReader();
+    const csi_list_node *head;
+    csi_window_init();
 
-    signal(SIGINT, sigint_handler);
-    signal(SIGTERM, sigint_handler);
-    signal(SIGSEGV, sigint_handler);
+    signal(SIGINT, signal_handler);
+    signal(SIGQUIT, signal_handler);
+    signal(SIGSEGV, signal_handler);
+    atexit(csi_window_exit);
 
     while (true) {
-        if (!reader->get_csi_from_shm(&packet, 1)) {
+        head = get_csi_within_window();
+        if (head == nullptr) {
+            std::cout << "Error" << endl;
             break;
         }
-        reader->print_csi_packet(&packet);
+        Mat<cx_double> csi_new = module_modify_csi_Power(head);
+        csi_new = module_doppler_smooth_csi_mulpal(csi_new);
+        std::cout << size(csi_new);
     }
     return 0;
 }
